@@ -1,0 +1,118 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // atau mysql/sqlite
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  password  String   // Harus di-hash sebelum disimpan
+  role      String   @default("USER") // Atau buat enum jika ingin lebih ketat
+  orders    Order[]
+
+  @@map("users")
+}
+// Model Package digunakan sebagai "Kategori" (Bronze, Silver, Gold)
+model Package {
+  id            String        @id @default(cuid())
+  name          String        // e.g., "Bronze", "Silver", "Gold"
+  description   String?       // Opsional: deskripsi paket
+  price         Int           // Harga total paket
+  package_items PackageItem[] // Item yang termasuk dalam paket
+  orders        Order[]       // Relasi ke order
+
+  @@map("packages")
+}
+
+// Model PackageItem sebagai item barang dalam paket
+model PackageItem {
+  id         String   @id @default(cuid())
+  name       String   // Nama barang, e.g., "Kursi Tamu"
+  price      Int      // Harga item
+  package_id String   // Referensi ke Package
+  package    Package  @relation(fields: [package_id], references: [id], onDelete: Cascade)
+
+  @@map("package_items")
+}
+// ... model-model lain
+
+model Schedule {
+  id         String   @id @default(cuid())
+  date       DateTime // Tanggal jadwal
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relasi ke Order (jika diperlukan)
+  // order      Order?   @relation(fields: [orderId], references: [id])
+  // orderId    String?
+
+  @@map("schedules")
+}
+
+model Order {
+  id                   String      @id @default(cuid())
+  user_id              String      // Referensi ke User
+  user                 User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  package_id           String      // Referensi ke Package
+  package              Package     @relation(fields: [package_id], references: [id])
+  total_amount         Int         // Total harga paket (sama dengan Package.price)
+  status               OrderStatus @default(PENDING)
+  dp_amount            Int         // 30% dari total
+  dp_paid_at           DateTime?
+  dp_transaction_id    String?     // ID transaksi Midtrans DP
+  dp_status            PaymentStatus @default(PENDING)
+  final_amount         Int         // 70% dari total
+  final_paid_at        DateTime?
+  final_transaction_id String?     // ID transaksi Midtrans Pelunasan
+  final_status         PaymentStatus @default(PENDING)
+  created_at           DateTime    @default(now())
+  updated_at           DateTime    @updatedAt
+
+  // ✅ Tambahkan field untuk data customer dan jadwal
+  customer_name        String?
+  customer_email       String?
+  customer_phone       String?
+  customer_address     String?
+  schedule_date        DateTime?    // Tanggal jadwal acara
+
+  // Relasi ke Schedule (jika ingin menyimpan jadwal terpisah)
+  // schedule_id          String?
+  // schedule             Schedule? @relation(fields: [schedule_id], references: [id])
+
+  // Tambahkan field untuk status pembayaran dan lainnya
+  transactionStatus    String?
+  fraud_status         String?
+  payment_type         String?
+
+  @@map("orders")
+}
+
+// ... enum lainnya
+
+enum OrderStatus {
+  PENDING     // Menunggu pembayaran DP
+  DP_PAID     // DP sudah dibayar
+  IN_PROGRESS // Kegiatan sedang berlangsung
+  COMPLETED   // Kegiatan selesai
+  FINISHED    // Pelunasan dibayar, order selesai
+  CANCELLED   // Order dibatalkan
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  EXPIRED
+  FAILED
+  REFUNDED
+}

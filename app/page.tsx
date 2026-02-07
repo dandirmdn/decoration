@@ -1,65 +1,147 @@
-import Image from "next/image";
+// app/page.tsx
 
-export default function Home() {
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { Package as PackageType, PackageItem as PackageItemType } from '@prisma/client';
+import { Heart, Star, Sparkles, Gift, CheckCircle } from 'lucide-react';
+
+// Interface untuk menyimpan item di keranjang
+interface PackageWithItems extends Omit<PackageType, 'package_items'> {
+  package_items: PackageItemType[];
+}
+
+// Ambil data dari API route
+const getPackages = async () => {
+  const res = await fetch('/api/packages');
+  if (!res.ok) {
+    throw new Error('Gagal mengambil data paket');
+  }
+  return res.json() as Promise<PackageWithItems[]>;
+};
+
+
+export default function HomePage() {
+  const [packages, setPackages] = useState<PackageWithItems[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchPackages = async () => {
+      try {
+        const data = await getPackages();
+        setPackages(data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPackages();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <p className="text-lg text-gray-600">Memuat paket...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <p className="text-red-500">Error: {error}</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div
+      className="min-h-screen bg-cover bg-center bg-no-repeat relative"
+      style={{
+        backgroundImage:
+          "url('https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=2070&auto=format&fit=crop')",
+      }}
+    >
+
+      {/* Hero Section */}
+      <section className="relative z-10 py-24 text-center text-white px-4">
+        <div className="max-w-4xl mx-auto">
+          <Heart className="w-12 h-12 mx-auto mb-4 text-pink-300 animate-pulse" />
+          <h1 className="text-4xl md:text-6xl font-extrabold mb-4 leading-tight">
+            Dekorasi Pernikahan Impian Anda
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-lg md:text-xl mb-8 opacity-90">
+            Pilih paket dekorasi kami yang indah dan elegan untuk hari spesial Anda.
+          </p>
+          <Link href="#packages">
+            <button className="bg-pink-600 hover:bg-pink-700 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition hover:scale-105">
+              Lihat Paket
+            </button>
+          </Link>
+        </div>
+      </section>
+
+      {/* Packages Section */}
+      <section id="packages" className="relative z-10 py-16 px-4">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-3xl font-bold text-center text-gray-800 mb-12 flex items-center justify-center gap-3">
+            <Star className="w-8 h-8 text-yellow-500" /> Paket Dekorasi
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {packages.map((pkg) => (
+              <div
+                key={pkg.id}
+                className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100 hover:shadow-xl transition"
+              >
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-2xl font-bold text-gray-800">{pkg.name}</h3>
+                    <Gift className="w-8 h-8 text-pink-500" />
+                  </div>
+                  <p className="text-pink-600 font-semibold text-xl mb-2">
+                    Rp {pkg.price.toLocaleString()}
+                  </p>
+                  <p className="text-gray-600 mb-4">{pkg.description || "Paket elegan untuk momen istimewa."}</p>
+                  <h4 className="font-bold text-gray-700 mb-2 flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-green-500" /> Termasuk:
+                  </h4>
+                  <ul className="list-disc pl-5 space-y-1 mb-4 max-h-40 overflow-y-auto">
+                    {pkg.package_items.map((item) => (
+                      <li key={item.id} className="text-gray-600">
+                        {item.name} <span className="text-gray-500"></span>
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    onClick={() => {
+                      // Simpan paket ke localStorage
+                      localStorage.setItem('selectedPackage', JSON.stringify(pkg));
+                      // Redirect ke halaman booking
+                      window.location.href = '/booking';
+                    }}
+                    className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded-lg transition hover:shadow-md"
+                  >
+                    Pilih Paket Ini
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="relative z-10 bg-gray-800 text-white py-8 mt-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p className="text-sm opacity-80">
+            © {new Date().getFullYear()} Elegant Decor. All rights reserved.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      </footer>
     </div>
   );
 }
